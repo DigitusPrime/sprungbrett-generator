@@ -1,15 +1,17 @@
 import streamlit as st
 import google.generativeai as genai
 
+# Seite konfigurieren
 st.set_page_config(page_title="FM Sprungbrett-Chat", page_icon="🚀")
 st.title("🚀 Dein Sprungbrett-Dialog")
 
-# API Key sicher laden
-api_key = st.sidebar.text_input("API Key", type="password")
-
-if api_key:
+# API Key automatisch aus den Streamlit Secrets laden
+# WICHTIG: Der Name in den Secrets muss exakt "GOOGLE_API_KEY" sein
+if "GOOGLE_API_KEY" in st.secrets:
+    api_key = st.secrets["GOOGLE_API_KEY"]
     genai.configure(api_key=api_key)
-    # Chat-Historie in Streamlit initialisieren
+    
+    # Chat-Historie initialisieren
     if "messages" not in st.session_state:
         st.session_state.messages = []
     
@@ -24,18 +26,21 @@ if api_key:
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # Antwort von Gemini generieren
+        # Antwort generieren (Fokus auf Ziele 2026: Energiefresser & Wertschätzung)
         model = genai.GenerativeModel('gemini-1.5-flash')
-        # Wir übergeben die gesamte Historie für den Dialog-Kontext
+        
+        # Dialog-Kontext aufbauen
         chat = model.start_chat(history=[
             {"role": m["role"] == "user" and "user" or "model", "parts": [m["content"]]} 
             for m in st.session_state.messages[:-1]
         ])
         
-        response = chat.send_message(prompt)
+        with st.spinner('Überlege...'):
+            response = chat.send_message(prompt)
         
         with st.chat_message("assistant"):
             st.markdown(response.text)
         st.session_state.messages.append({"role": "assistant", "content": response.text})
+
 else:
-    st.info("Bitte gib den API-Key ein, um den Dialog zu starten.")
+    st.error("API Key fehlt! Bitte hinterlege 'GOOGLE_API_KEY' in den Streamlit Cloud Secrets.")
