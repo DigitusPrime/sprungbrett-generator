@@ -8,7 +8,7 @@ st.title("🚀 Dein Sprungbrett-Dialog")
 # API Key automatisch aus den Streamlit Secrets laden
 # WICHTIG: Der Name in den Secrets muss exakt "GOOGLE_API_KEY" sein
 if "GOOGLE_API_KEY" in st.secrets:
-    api_key = st.secrets["GOOGLE_API_KEY"]
+    api_key = st.secrets["AIzaSyCAgNE9n6-PNEwtu6i4xiL8kN8iMxLf908"]
     genai.configure(api_key=api_key)
     
     # Chat-Historie initialisieren
@@ -44,3 +44,4 @@ if "GOOGLE_API_KEY" in st.secrets:
 
 else:
     st.error("API Key fehlt! Bitte hinterlege 'GOOGLE_API_KEY' in den Streamlit Cloud Secrets.")
+
