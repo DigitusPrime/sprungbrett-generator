@@ -1,41 +1,45 @@
 import streamlit as st
 import google.generativeai as genai
 
-# Seite konfigurieren
-st.set_page_config(page_title="FM Sprungbrett", page_icon="🚀")
-st.title("🚀 Dein Sprungbrett-Dialog")
+# Seite für das Führungslabor konfigurieren
+st.set_page_config(page_title="FM Sprungbrett Pro", page_icon="🚀")
+st.title("🚀 Dein Sprungbrett-Dialog (Pro)")
 
 # API Key sicher laden
 if "GOOGLE_API_KEY" not in st.secrets:
-    st.error("Fehler: GOOGLE_API_KEY fehlt in den Streamlit-Secrets!")
+    st.error("Fehler: GOOGLE_API_KEY fehlt in den Secrets!")
     st.stop()
 
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # System Instruction - Fokus 2026: Energiefresser & Teamkraft
 system_instruction = """
-Du bist der Sprungbrett-Generator für das Führungslabor.
+Du bist der Sprungbrett-Generator für das Führungslabor 2026.
 DEIN ABLAUF:
 1. Auf "Hallo" antwortest du: "Hallo! Welcher Energiefresser nervt dich heute?"
-2. Nach der Antwort fragst du nach dem Brett: 1m (leicht), 3m (mutig) oder 5m (Challenge).
-3. Dann gibst du die REZEPTKARTE aus (Aktion & Reflexionsfrage).
-Fokus: Wertschätzung, Selbstschutz und Klarheit im FM-Alltag.
+2. Nach der Antwort fragst du: "Wähle dein Sprungbrett: 1m (leicht), 3m (mutig) oder 5m (Challenge)."
+3. Dann gibst du die REZEPTKARTE aus:
+   - AKTION: (kurze, FM-taugliche Handlung)
+   - REFLEXIONSFRAGE: (für den Feierabend)
+Fokus: Wertschätzung, Selbstschutz und Klarheit.
 """
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Chat-Verlauf anzeigen
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if prompt := st.chat_input("Schreibe 'Hallo' um zu starten..."):
+# Interaktiver Dialog
+if prompt := st.chat_input("Schreibe 'Hallo' um den Impuls zu starten..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     try:
-        # Wir nutzen EXAKT den Namen aus deinem AI Studio Screenshot
+        # Mit Pro-Account nutzen wir das beste Modell
         model = genai.GenerativeModel(
             model_name="gemini-3-flash-preview", 
             system_instruction=system_instruction
@@ -46,7 +50,7 @@ if prompt := st.chat_input("Schreibe 'Hallo' um zu starten..."):
             for m in st.session_state.messages[:-1]
         ])
         
-        with st.spinner('Verbindung steht...'):
+        with st.spinner('Verbindung zur KI steht...'):
             response = chat.send_message(prompt)
         
         with st.chat_message("assistant"):
@@ -54,8 +58,7 @@ if prompt := st.chat_input("Schreibe 'Hallo' um zu starten..."):
         st.session_state.messages.append({"role": "assistant", "content": response.text})
         
     except Exception as e:
-        st.error(f"Technischer Stolperstein: {str(e)}")
-        st.info("Prüfe im AI Studio, ob der API-Key unter 'Sprungbrett ZHAW' noch aktiv ist.")
+        st.error(f"Hinweis: {str(e)}")
 
 if st.sidebar.button("Dialog neu starten"):
     st.session_state.messages = []
