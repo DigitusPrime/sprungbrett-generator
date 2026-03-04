@@ -12,17 +12,14 @@ if "GOOGLE_API_KEY" not in st.secrets:
 
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
-# Die System Instruction - Fokus auf 1. Halbjahr 2026
-# Wir setzen hier die Ziele für Respekt, Wertschätzung und Motivation um [cite: 31, 32]
+# Die System Instruction für das Führungslabor 2026
 system_instruction = """
-Du bist der pragmatische Impuls-Geber für das Führungslabor. 
-STRIKTER DIALOG-ABLAUF:
-1. Der User startet mit "Hallo".
-2. Du fragst: "Welcher Energiefresser beschäftigt dich heute?"
-3. Danach fragst du: "Wähle dein Sprungbrett: 1m (leicht), 3m (mutig) oder 5m (Herausforderung)?"
-4. Dann gibst du die REZEPTKARTE aus:
-   - AKTION: (kurz & knackig)
-   - REFLEXIONSFRAGE: (für den Feierabend)
+Du bist der interaktive „Sprungbrett-Generator“. 
+ABLAUF:
+1. Start: "Hallo".
+2. Frage nach dem Energiefresser (Fokus: 1. Halbjahr 2026).
+3. Frage nach der Höhe: 1m (leicht), 3m (mutig), 5m (Herausforderung).
+4. Gib eine AKTION und eine REFLEXIONSFRAGE aus.
 """
 
 if "messages" not in st.session_state:
@@ -37,35 +34,29 @@ if prompt := st.chat_input("Schreibe 'Hallo' um zu starten..."):
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    try:
-        # Geänderter Modellname für maximale Kompatibilität in 2026
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash", 
-            system_instruction=system_instruction
-        )
-        
-        chat = model.start_chat(history=[
-            {"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]} 
-            for m in st.session_state.messages[:-1]
-        ])
-        
-        with st.spinner('Verbindung zum Führungslabor wird aufgebaut...'):
-            response = chat.send_message(prompt)
-        
-        with st.chat_message("assistant"):
-            st.markdown(response.text)
-        st.session_state.messages.append({"role": "assistant", "content": response.text})
-        
-    except Exception as e:
-        # Falls 'gemini-1.5-flash' immer noch zickt, versuchen wir die aktuellste Version
-        st.warning("Versuche alternative Verbindung...")
+    # Wir probieren verschiedene Modellnamen, falls einer nicht gefunden wird
+    model_names = ["gemini-1.5-flash", "gemini-3-flash-preview", "models/gemini-1.5-flash"]
+    response_text = ""
+    
+    for m_name in model_names:
         try:
-            model = genai.GenerativeModel(model_name="gemini-1.5-flash-latest", system_instruction=system_instruction)
-            chat = model.start_chat(history=[])
+            model = genai.GenerativeModel(model_name=m_name, system_instruction=system_instruction)
+            chat = model.start_chat(history=[
+                {"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]} 
+                for m in st.session_state.messages[:-1]
+            ])
             response = chat.send_message(prompt)
-            st.chat_message("assistant").markdown(response.text)
-        except:
-            st.error(f"Kritischer Fehler: {e}")
+            response_text = response.text
+            break # Wenn es klappt, brechen wir die Suche ab
+        except Exception:
+            continue
+    
+    if response_text:
+        with st.chat_message("assistant"):
+            st.markdown(response_text)
+        st.session_state.messages.append({"role": "assistant", "content": response_text})
+    else:
+        st.error("Verbindung zur KI fehlgeschlagen. Bitte prüfe, ob dein API-Key im AI Studio noch aktiv ist.")
 
 if st.sidebar.button("Dialog neu starten"):
     st.session_state.messages = []
