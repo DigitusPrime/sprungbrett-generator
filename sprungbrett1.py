@@ -5,21 +5,21 @@ import google.generativeai as genai
 st.set_page_config(page_title="FM Sprungbrett", page_icon="🚀")
 st.title("🚀 Dein Sprungbrett-Dialog")
 
-# API Key sicher aus den Streamlit Secrets laden
+# API Key sicher laden
 if "GOOGLE_API_KEY" not in st.secrets:
-    st.error("Bitte hinterlege den 'GOOGLE_API_KEY' in den Streamlit-Secrets!")
+    st.error("Fehler: GOOGLE_API_KEY fehlt in den Streamlit-Secrets!")
     st.stop()
 
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
-# Die System Instruction für das Führungslabor 2026
+# System Instruction - Fokus 2026: Energiefresser & Teamkraft
 system_instruction = """
-Du bist der interaktive „Sprungbrett-Generator“. 
-ABLAUF:
-1. Start: "Hallo".
-2. Frage nach dem Energiefresser (Fokus: 1. Halbjahr 2026).
-3. Frage nach der Höhe: 1m (leicht), 3m (mutig), 5m (Herausforderung).
-4. Gib eine AKTION und eine REFLEXIONSFRAGE aus.
+Du bist der Sprungbrett-Generator für das Führungslabor.
+DEIN ABLAUF:
+1. Auf "Hallo" antwortest du: "Hallo! Welcher Energiefresser nervt dich heute?"
+2. Nach der Antwort fragst du nach dem Brett: 1m (leicht), 3m (mutig) oder 5m (Challenge).
+3. Dann gibst du die REZEPTKARTE aus (Aktion & Reflexionsfrage).
+Fokus: Wertschätzung, Selbstschutz und Klarheit im FM-Alltag.
 """
 
 if "messages" not in st.session_state:
@@ -34,29 +34,28 @@ if prompt := st.chat_input("Schreibe 'Hallo' um zu starten..."):
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Wir probieren verschiedene Modellnamen, falls einer nicht gefunden wird
-    model_names = ["gemini-1.5-flash", "gemini-3-flash-preview", "models/gemini-1.5-flash"]
-    response_text = ""
-    
-    for m_name in model_names:
-        try:
-            model = genai.GenerativeModel(model_name=m_name, system_instruction=system_instruction)
-            chat = model.start_chat(history=[
-                {"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]} 
-                for m in st.session_state.messages[:-1]
-            ])
+    try:
+        # Wir nutzen EXAKT den Namen aus deinem AI Studio Screenshot
+        model = genai.GenerativeModel(
+            model_name="gemini-3-flash-preview", 
+            system_instruction=system_instruction
+        )
+        
+        chat = model.start_chat(history=[
+            {"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]} 
+            for m in st.session_state.messages[:-1]
+        ])
+        
+        with st.spinner('Verbindung steht...'):
             response = chat.send_message(prompt)
-            response_text = response.text
-            break # Wenn es klappt, brechen wir die Suche ab
-        except Exception:
-            continue
-    
-    if response_text:
+        
         with st.chat_message("assistant"):
-            st.markdown(response_text)
-        st.session_state.messages.append({"role": "assistant", "content": response_text})
-    else:
-        st.error("Verbindung zur KI fehlgeschlagen. Bitte prüfe, ob dein API-Key im AI Studio noch aktiv ist.")
+            st.markdown(response.text)
+        st.session_state.messages.append({"role": "assistant", "content": response.text})
+        
+    except Exception as e:
+        st.error(f"Technischer Stolperstein: {str(e)}")
+        st.info("Prüfe im AI Studio, ob der API-Key unter 'Sprungbrett ZHAW' noch aktiv ist.")
 
 if st.sidebar.button("Dialog neu starten"):
     st.session_state.messages = []
