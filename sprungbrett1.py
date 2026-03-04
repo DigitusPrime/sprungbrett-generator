@@ -1,24 +1,28 @@
 import streamlit as st
 import google.generativeai as genai
 
+# Seite konfigurieren
 st.set_page_config(page_title="FM Sprungbrett", page_icon="🚀")
 st.title("🚀 Dein Sprungbrett-Dialog")
 
-# API Key aus Secrets laden
+# API Key sicher aus den Streamlit Secrets laden
 if "GOOGLE_API_KEY" not in st.secrets:
-    st.error("Fehler: GOOGLE_API_KEY in Streamlit Secrets nicht gefunden.")
+    st.error("Bitte hinterlege den 'GOOGLE_API_KEY' in den Streamlit-Secrets!")
     st.stop()
 
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
-# Die System Instruction für den Dialog
+# Die System Instruction - Fokus auf 1. Halbjahr 2026
+# Wir setzen hier die Ziele für Respekt, Wertschätzung und Motivation um [cite: 31, 32]
 system_instruction = """
-Du bist der Impuls-Geber für das Führungslabor. Dein Ziel ist Bewegung im System[cite: 38].
-DIALGO-REGELN:
-1. Start: "Hallo".
-2. Frage: "Welcher Energiefresser beschäftigt dich heute?" 
-3. Nach Antwort: Frage nach Sprungbrett-Höhe (1m, 3m, 5m).
-4. Finale: Gib AKTION und REFLEXIONSFRAGE aus. Fokus: Lösungsorientierung und Teamkraft[cite: 27].
+Du bist der pragmatische Impuls-Geber für das Führungslabor. 
+STRIKTER DIALOG-ABLAUF:
+1. Der User startet mit "Hallo".
+2. Du fragst: "Welcher Energiefresser beschäftigt dich heute?"
+3. Danach fragst du: "Wähle dein Sprungbrett: 1m (leicht), 3m (mutig) oder 5m (Herausforderung)?"
+4. Dann gibst du die REZEPTKARTE aus:
+   - AKTION: (kurz & knackig)
+   - REFLEXIONSFRAGE: (für den Feierabend)
 """
 
 if "messages" not in st.session_state:
@@ -34,9 +38,9 @@ if prompt := st.chat_input("Schreibe 'Hallo' um zu starten..."):
         st.markdown(prompt)
 
     try:
-        # Hier nutzen wir den exakten Modell-String
+        # Geänderter Modellname für maximale Kompatibilität in 2026
         model = genai.GenerativeModel(
-            model_name="models/gemini-1.5-flash", 
+            model_name="gemini-1.5-flash", 
             system_instruction=system_instruction
         )
         
@@ -45,7 +49,7 @@ if prompt := st.chat_input("Schreibe 'Hallo' um zu starten..."):
             for m in st.session_state.messages[:-1]
         ])
         
-        with st.spinner('Überlege...'):
+        with st.spinner('Verbindung zum Führungslabor wird aufgebaut...'):
             response = chat.send_message(prompt)
         
         with st.chat_message("assistant"):
@@ -53,7 +57,15 @@ if prompt := st.chat_input("Schreibe 'Hallo' um zu starten..."):
         st.session_state.messages.append({"role": "assistant", "content": response.text})
         
     except Exception as e:
-        st.error(f"KI-Verbindung fehlgeschlagen. Bitte prüfe dein Google AI Studio Projekt. Details: {e}")
+        # Falls 'gemini-1.5-flash' immer noch zickt, versuchen wir die aktuellste Version
+        st.warning("Versuche alternative Verbindung...")
+        try:
+            model = genai.GenerativeModel(model_name="gemini-1.5-flash-latest", system_instruction=system_instruction)
+            chat = model.start_chat(history=[])
+            response = chat.send_message(prompt)
+            st.chat_message("assistant").markdown(response.text)
+        except:
+            st.error(f"Kritischer Fehler: {e}")
 
 if st.sidebar.button("Dialog neu starten"):
     st.session_state.messages = []
