@@ -1,41 +1,33 @@
 import streamlit as st
 import google.generativeai as genai
 
-# Grundkonfiguration
+# UI Konfiguration
 st.set_page_config(page_title="FM Sprungbrett", page_icon="🚀")
+st.title("🚀 Sprungbrett-Labor")
 
-st.title("🚀 Sprungbrett-Labor: Erholungsmodus")
-st.info("Die App ist erfolgreich gestartet. Wir testen jetzt die Verbindung.")
+st.info("Schritt 1: App-Oberfläche geladen. Wir testen jetzt die Leitung.")
 
-# 1. Geheimnis-Check
-if "GOOGLE_API_KEY" not in st.secrets:
-    st.error("⚠️ Fehler: Der 'GOOGLE_API_KEY' wurde in den Streamlit-Secrets nicht gefunden!")
+# 1. Key aus den Secrets ziehen
+if "GOOGLE_API_KEY" in st.secrets:
+    api_key = st.secrets["GOOGLE_API_KEY"]
+    genai.configure(api_key=api_key)
+    st.write("✅ API-Schlüssel wurde im System gefunden.")
+else:
+    st.error("❌ Fehler: GOOGLE_API_KEY fehlt in den Secrets!")
     st.stop()
 
-# 2. Verbindungstest auf Knopfdruck
-if st.button("Verbindung zur KI jetzt testen"):
+# 2. Manueller Verbindungstest
+if st.button("Verbindung zum Pro-Server testen"):
     try:
-        # Key säubern (entfernt alle Klammern/Leerzeichen)
-        api_key = st.secrets["GOOGLE_API_KEY"].strip().strip('"').strip("'").strip("[").strip("]")
+        # Wir nutzen gemini-1.5-flash, da es im Billing-Projekt aktiv ist
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
-        # WICHTIG: Wir erzwingen die API-Version v1, um den 404-Fehler zu umgehen
-        genai.configure(api_key=api_key)
-        
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        with st.spinner('Sende Test-Anfrage an den Pro-Server...'):
-            # Einfacher Test-Prompt
-            response = model.generate_content("Antworte mit: 'System bereit!'")
+        with st.spinner('Anfrage an Google wird gesendet...'):
+            response = model.generate_content("Antworte mit 'OK'")
             
-        if response.text:
-            st.success(f"✅ Erfolg! Die KI antwortet: {response.text}")
+        if response:
+            st.success(f"🚀 Erfolg! Die KI sagt: {response.text}")
             st.balloons()
-            st.session_state.ready = True
     except Exception as e:
-        st.error(f"❌ Fehler bei der Verbindung: {str(e)}")
-        st.info("Hinweis: Dein Billing ist aktiv (232 CHF), aber prüfe, ob der Key u0QA korrekt kopiert wurde.")
-
-# 3. Kleiner Debug-Bereich (Nur für dich sichtbar)
-with st.expander("Technisches Dashboard"):
-    st.write("Eingetragener Key-Anfang:", st.secrets["GOOGLE_API_KEY"][:5] + "...")
-    st.write("Modell: gemini-1.5-flash")
+        st.error(f"Stolperstein: {e}")
+        st.info("Tipp: Wenn hier 404 steht, prüfen wir als nächstes die API-Version.")
