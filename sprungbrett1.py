@@ -1,33 +1,39 @@
 import streamlit as st
 import google.generativeai as genai
 
-# UI Konfiguration
 st.set_page_config(page_title="FM Sprungbrett", page_icon="🚀")
 st.title("🚀 Sprungbrett-Labor")
 
-st.info("Schritt 1: App-Oberfläche geladen. Wir testen jetzt die Leitung.")
+st.info("Schritt 2: Wir testen jetzt die stabile Pro-Leitung.")
 
-# 1. Key aus den Secrets ziehen
 if "GOOGLE_API_KEY" in st.secrets:
-    api_key = st.secrets["GOOGLE_API_KEY"]
+    api_key = st.secrets["GOOGLE_API_KEY"].strip().strip('"').strip("'").strip("[").strip("]")
+    # WICHTIG: Wir konfigurieren hier NUR den Key
     genai.configure(api_key=api_key)
-    st.write("✅ API-Schlüssel wurde im System gefunden.")
 else:
-    st.error("❌ Fehler: GOOGLE_API_KEY fehlt in den Secrets!")
+    st.error("API-Key fehlt!")
     st.stop()
 
-# 2. Manueller Verbindungstest
-if st.button("Verbindung zum Pro-Server testen"):
+# Wir bauen eine Diagnose-Funktion ein
+if st.button("Verfügbare Modelle auflisten"):
     try:
-        # Wir nutzen gemini-1.5-flash, da es im Billing-Projekt aktiv ist
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        models = [m.name for m in genai.list_models()]
+        st.write("Dein Key sieht folgende Modelle:", models)
+    except Exception as e:
+        st.error(f"Diagnose fehlgeschlagen: {e}")
+
+if st.button("Stabile Verbindung testen"):
+    try:
+        # TRICK: Wir nutzen hier 'gemini-1.5-flash-latest'
+        # Dieser Name erzwingt oft den stabilen v1-Kanal
+        model = genai.GenerativeModel("gemini-1.5-flash-latest")
         
-        with st.spinner('Anfrage an Google wird gesendet...'):
-            response = model.generate_content("Antworte mit 'OK'")
+        with st.spinner('Sende Signal an Pro-Server...'):
+            response = model.generate_content("Antworte mit: 'Leitung steht!'")
             
-        if response:
-            st.success(f"🚀 Erfolg! Die KI sagt: {response.text}")
+        if response.text:
+            st.success(f"✅ Volltreffer! Die KI sagt: {response.text}")
             st.balloons()
     except Exception as e:
-        st.error(f"Stolperstein: {e}")
-        st.info("Tipp: Wenn hier 404 steht, prüfen wir als nächstes die API-Version.")
+        st.error(f"Immer noch v1beta-Fehler? Details: {e}")
+        st.info("Falls es nicht geht: Klicke oben auf 'Modelle auflisten' und sag mir, was dort steht.")
