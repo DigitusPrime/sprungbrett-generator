@@ -1,39 +1,38 @@
 import streamlit as st
 import google.generativeai as genai
 
-st.set_page_config(page_title="FM Sprungbrett", page_icon="🚀")
+st.set_page_config(page_title="FM Sprungbrett Pro", page_icon="🚀")
 st.title("🚀 Sprungbrett-Labor")
 
-st.info("Schritt 2: Wir testen jetzt die stabile Pro-Leitung.")
+st.info("Schritt 3: Wir nutzen jetzt das Modell 'gemini-2.5-flash' aus deiner Liste.")
 
+# 1. Key laden
 if "GOOGLE_API_KEY" in st.secrets:
     api_key = st.secrets["GOOGLE_API_KEY"].strip().strip('"').strip("'").strip("[").strip("]")
-    # WICHTIG: Wir konfigurieren hier NUR den Key
     genai.configure(api_key=api_key)
 else:
     st.error("API-Key fehlt!")
     st.stop()
 
-# Wir bauen eine Diagnose-Funktion ein
-if st.button("Verfügbare Modelle auflisten"):
+# 2. Verbindungstest mit dem RICHTIGEN Modell
+if st.button("Pro-Verbindung mit Gemini 2.5 testen"):
     try:
-        models = [m.name for m in genai.list_models()]
-        st.write("Dein Key sieht folgende Modelle:", models)
-    except Exception as e:
-        st.error(f"Diagnose fehlgeschlagen: {e}")
-
-if st.button("Stabile Verbindung testen"):
-    try:
-        # TRICK: Wir nutzen hier 'gemini-1.5-flash-latest'
-        # Dieser Name erzwingt oft den stabilen v1-Kanal
-        model = genai.GenerativeModel("gemini-1.5-flash-latest")
+        # Wir nutzen EXAKT den Namen aus deiner Liste
+        model = genai.GenerativeModel("gemini-2.5-flash")
         
-        with st.spinner('Sende Signal an Pro-Server...'):
-            response = model.generate_content("Antworte mit: 'Leitung steht!'")
+        with st.spinner('Signal wird an den 2026er Pro-Server gesendet...'):
+            response = model.generate_content("Antworte mit: 'Verbindung erfolgreich, Zwi!'")
             
         if response.text:
             st.success(f"✅ Volltreffer! Die KI sagt: {response.text}")
             st.balloons()
+            st.session_state.connected = True
     except Exception as e:
-        st.error(f"Immer noch v1beta-Fehler? Details: {e}")
-        st.info("Falls es nicht geht: Klicke oben auf 'Modelle auflisten' und sag mir, was dort steht.")
+        st.error(f"Fehler: {e}")
+        st.info("Falls hier wieder v1beta steht, ist die Google-Bibliothek in Streamlit veraltet.")
+
+# 3. Ausblick
+if st.session_state.get("connected"):
+    st.write("---")
+    st.write("### Nächster Schritt für Jennifer")
+    st.write("Die Leitung steht! Soll ich jetzt die Logik für die Energiefresser einbauen?")
