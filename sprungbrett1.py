@@ -1,51 +1,33 @@
 import streamlit as st
 import google.generativeai as genai
 
-st.set_page_config(page_title="FM Sprungbrett Pro", page_icon="🚀")
-st.title("🚀 Dein Sprungbrett-Dialog")
+st.set_page_config(page_title="FM Sprungbrett", page_icon="🚀")
+st.title("🚀 Dein Sprungbrett-Test")
 
-# 1. Key extrem sicher laden und säubern
+# 1. Key laden und säubern (DAS IST DER HÄUFIGSTE FEHLER)
+# Wir entfernen alle eckigen Klammern, Anführungszeichen und Leerzeichen!
 if "GOOGLE_API_KEY" in st.secrets:
-    raw_key = st.secrets["GOOGLE_API_KEY"]
-    # Entfernt alle möglichen Sonderzeichen wie [ ] " oder Leerzeichen
-    api_key = raw_key.replace("[", "").replace("]", "").replace('"', "").strip()
+    api_key = st.secrets["GOOGLE_API_KEY"].replace("[", "").replace("]", "").replace('"', "").replace("'", "").strip()
     genai.configure(api_key=api_key)
 else:
-    st.error("API-Key fehlt in den Secrets!")
+    st.error("API-Key fehlt in den Streamlit-Secrets!")
     st.stop()
 
-# 2. Die Instruktion für das Führungslabor 2026
-instruction = "Handle als Coach. Ablauf: 1. Frage nach Energiefresser. 2. Frage nach 1m, 3m, 5m. 3. Gib Aktion & Reflexionsfrage aus."
+# 2. Ein ganz simpler Prompt-Test
+prompt = st.text_input("Schreibe etwas und drücke Enter:", "Hallo")
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-if prompt := st.chat_input("Schreibe 'Hallo'..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
+if st.button("KI fragen"):
     try:
-        # 3. Stabiler Aufruf über das GenerativeModel
-        # Wir verzichten auf system_instruction im Konstruktor, da dies den v1beta-Fehler auslöst!
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        # Wir nutzen den absolut stabilsten Namen
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # Wir bauen den Kontext manuell zusammen
-        full_prompt = f"System-Anweisung: {instruction}\n\nNutzer: {prompt}"
-        
-        with st.spinner('Führungslabor wird verbunden...'):
-            response = model.generate_content(full_prompt)
+        with st.spinner('Prüfe Pro-Verbindung...'):
+            # Einfachste Anfrage ohne Schnickschnack
+            response = model.generate_content(f"Antworte nur mit: 'Verbindung steht, Zwi!'. Der User sagt: {prompt}")
             
-        if response.text:
-            with st.chat_message("assistant"):
-                st.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
-        else:
-            st.warning("Die KI hat keine Antwort geliefert. Prüfe dein Billing-Guthaben.")
-
+        st.success(response.text)
+        st.balloons()
+        
     except Exception as e:
-        st.error(f"Technisches Detail: {e}")
+        st.error(f"Fehler-Details: {e}")
+        st.info("Falls hier '404' steht, versuche in Streamlit 'Reboot App'.")
