@@ -1,56 +1,51 @@
 import streamlit as st
 import google.generativeai as genai
 
-st.set_page_config(page_title="FM Sprungbrett Pro", page_icon="🚀")
-st.title("🚀 Sprungbrett Diagnose & Chat")
+# Grundkonfiguration (Muss ganz oben stehen)
+st.set_page_config(page_title="FM Sprungbrett", page_icon="🚀")
 
-# 1. Key laden
+# Sofortige Anzeige, damit das Rädchen aufhört zu drehen
+st.title("🚀 Sprungbrett-Labor")
+st.write("Status: App gestartet. Warte auf Eingabe...")
+
+# 1. Key-Check
 if "GOOGLE_API_KEY" in st.secrets:
-    api_key = st.secrets["GOOGLE_API_KEY"].replace("[", "").replace("]", "").strip()
+    # Wir reinigen den Key extrem vorsichtig
+    api_key = st.secrets["GOOGLE_API_KEY"].strip().strip('"').strip("'").strip("[").strip("]")
     genai.configure(api_key=api_key)
 else:
-    st.error("API-Key fehlt!")
+    st.error("⚠️ Kein API-Key in den Secrets gefunden!")
     st.stop()
 
-# 2. DIAGNOSE: Was ist wirklich verfügbar?
-with st.expander("🔍 System-Check (Klick mich bei Fehlern)"):
-    try:
-        # Wir listen alle verfügbaren Modelle auf
-        available_models = [m.name for m in genai.list_models()]
-        st.write("Dein Key hat Zugriff auf:", available_models)
-    except Exception as e:
-        st.error(f"Diagnose fehlgeschlagen: {e}")
+# 2. Einfacher Test-Dialog
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
-# 3. CHAT-LOGIK
-# Wir probieren das stabilste 2026er Modell: gemini-2.5-flash
-# Falls das in deiner Region nicht geht, nimm gemini-3-flash-preview
-MODEL_ID = "gemini-2.5-flash" 
+prompt = st.chat_input("Schreibe 'Hallo'...")
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-if prompt := st.chat_input("Schreibe 'Hallo'..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+if prompt:
     with st.chat_message("user"):
         st.markdown(prompt)
-
+    
     try:
-        # WICHTIG: Wir nutzen die GenerativeModel Klasse OHNE Beta-Parameter
-        model = genai.GenerativeModel(MODEL_ID)
+        # Wir nutzen gemini-1.5-flash, das ist der stabilste Standard
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
-        # Einfacher Prompt-Aufruf (keine History-Komplexität für den Test)
-        response = model.generate_content(
-            f"Du bist der Sprungbrett-Generator. Antworte auf: {prompt}"
-        )
-        
+        with st.spinner('Verbindung zum Pro-Server wird aufgebaut...'):
+            # Wir packen die Anweisung direkt in den Aufruf
+            response = model.generate_content(
+                f"Du bist der Sprungbrett-Generator. Antworte kurz auf: {prompt}"
+            )
+            
         if response.text:
             with st.chat_message("assistant"):
                 st.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
+                st.balloons() # Ein kleines Erfolgserlebnis!
     except Exception as e:
-        st.error(f"Fehler mit {MODEL_ID}: {e}")
-        st.info("Versuche in der Diagnose-Liste oben ein Modell zu finden, das 'generateContent' unterstützt.")
+        st.error(f"Technisches Detail: {e}")
+        st.info("Tipp: Wenn hier 404 steht, ist die API im Google Projekt noch nicht bereit.")
+
+# Knopf zum Zurücksetzen in der Seitenleiste
+if st.sidebar.button("App neu starten"):
+    st.session_state.chat_history = []
+    st.rerun()
