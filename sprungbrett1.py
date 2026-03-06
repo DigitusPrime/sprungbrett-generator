@@ -1,15 +1,21 @@
 import streamlit as st
 import google.generativeai as genai
+import os
 
 # 1. Seite & Onboarding
 st.set_page_config(page_title="FM Sprungbrett Pro", page_icon="🚀", layout="centered")
 
-# --- HIER DEN TEXT DEINES WERTESYSTEMS EINTRAGEN ---
-WERTESYSTEM_TEXT = """
-Hier den Text des betrieblichen Wertesystems einfügen...
-Dieser Text dient der KI als dauerhafter Wegweiser im Hintergrund.
-"""
-# --------------------------------------------------
+# --- NEU: Wertesystem aus .md Datei laden ---
+def load_wertesystem():
+    file_path = "Baumstark_Booklet_5._Auflage.md"
+    if os.path.exists(file_path):
+        with open(file_path, "r", encoding="utf-8") as f:
+            return f.read()
+    else:
+        return "Allgemeine FM-Coaching Standards (Datei wertesystem.md nicht gefunden)."
+
+WERTESYSTEM_TEXT = load_wertesystem()
+# --------------------------------------------
 
 st.title("🚀 Dein FM-Sprungbrett")
 st.markdown("""
@@ -45,15 +51,13 @@ for message in st.session_state.messages:
 # --- DYNAMISCHE ENTSCHEIDUNGSHILFE (Präzise Logik) ---
 show_legend = False
 if st.session_state.messages:
-    # Wir suchen die LETZTE Antwort der KI
     last_ai_msg = ""
     for m in reversed(st.session_state.messages):
         if m["role"] == "assistant":
             last_ai_msg = m["content"].lower()
             break
     
-    # Die Tabelle erscheint NUR, wenn die KI explizit nach der Wahl fragt
-    # Wir nutzen spezifische Begriffe, damit die Begrüssung sie nicht auslöst
+    # Trigger: Erscheint nur bei der konkreten Nachfrage nach der Höhe
     trigger_words = ["1m", "3m", "5m", "1 meter", "3 meter", "5 meter", "sprungbretthöhe"]
     if any(word in last_ai_msg for word in trigger_words):
         show_legend = True
@@ -71,7 +75,7 @@ if show_legend:
 # 5. System-Instruktion
 SYSTEM_INSTRUCTION = f"""
 Du bist der Sprungbrett-Coach für das Führungslabor 2026. 
-BASIS (Wegweiser):
+BASIS (Wegweiser aus deinem Wertesystem):
 ---
 {WERTESYSTEM_TEXT}
 ---
