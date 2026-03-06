@@ -24,6 +24,24 @@ with st.expander("🔍 Was bedeuten die Sprungbretter? (Mut-Level)"):
 | **5 Meter** | **Mutig** | Ein radikaler Stopp oder ein schwieriger Konflikt. | Echte Transformation & Klärung. |
 """)
 
+# 2. Seitenleiste: Wissensbasis & Reset
+st.sidebar.header("📁 Wissensbasis")
+uploaded_file = st.sidebar.file_uploader("Wertesystem (PDF) hochladen", type="pdf")
+
+values_context = ""
+if uploaded_file:
+    try:
+        pdf_reader = PdfReader(uploaded_file)
+        for page in pdf_reader.pages:
+            text = page.extract_text()
+            if text: values_context += text
+        st.sidebar.success("Wertesystem aktiv!")
+    except Exception as e:
+        st.sidebar.error(f"PDF-Fehler: {e}")
+
+if st.sidebar.button("Neuen Dialog starten"):
+    st.session_state.messages = []
+    st.rerun()
 
 # 3. API-Konfiguration
 if "GOOGLE_API_KEY" in st.secrets:
@@ -79,4 +97,3 @@ if prompt := st.chat_input("Schreibe 'Hallo' um den Dialog zu beginnen..."):
             st.session_state.messages.append({"role": "assistant", "content": response.text})
     except Exception as e:
         st.error(f"Technischer Stolperstein: {e}")
-
