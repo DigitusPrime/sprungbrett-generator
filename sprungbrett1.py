@@ -1,67 +1,99 @@
 import streamlit as st
 import google.generativeai as genai
+from PyPDF2 import PdfReader
 
-# Seite konfigurieren
-st.set_page_config(page_title="FM Sprungbrett Pro", page_icon="🚀")
-st.title("🚀 Dein Sprungbrett-Dialog")
+# 1. Seite & Onboarding
+st.set_page_config(page_title="FM Sprungbrett Pro", page_icon="🚀", layout="centered")
 
-# 1. API-Konfiguration (Stabil für 2026)
+st.title("🚀 Dein FM-Sprungbrett")
+st.markdown("""
+**Vom Energiefresser zur Aktion.**
+Kennst du das? Kleine oder grosse Dinge im Führungsalltag rauben dir Energie, aber der erste Schritt zur Besserung fehlt. 
+Das **Sprungbrett** ist dein Werkzeug, um vom Nachdenken ins Tun zu kommen.
+
+Gemeinsam identifizieren wir heute einen **Energiefresser** und wählen dann die passende Sprungbretthöhe für deine Lösung. 
+Je höher das Brett, desto mehr Mut ist gefragt – aber desto grösser ist auch die Befreiung.
+""")
+
+with st.expander("🔍 Was bedeuten die Sprungbretter? (Mut-Level)"):
+    st.markdown("""
+| Höhe | Mut-Level | Beschreibung | Ziel |
+| :--- | :--- | :--- | :--- |
+| **1 Meter** | **Leicht** | Ein kleiner „Quick-Win“. Wenig Risiko, sofort umsetzbar (<15 Min). | Den Stein ins Rollen bringen. |
+| **3 Meter** | **Respektabel** | Eine bewusste Verhaltensänderung oder ein klares Gespräch. | Spürbare Entlastung schaffen. |
+| **5 Meter** | **Mutig** | Ein radikaler Stopp oder ein schwieriger Konflikt. | Echte Transformation & Klärung. |
+""")
+
+# 2. Seitenleiste: Wissensbasis & Reset
+st.sidebar.header("📁 Wissensbasis")
+uploaded_file = st.sidebar.file_uploader("Wertesystem (PDF) hochladen", type="pdf")
+
+values_context = ""
+if uploaded_file:
+    try:
+        pdf_reader = PdfReader(uploaded_file)
+        for page in pdf_reader.pages:
+            text = page.extract_text()
+            if text: values_context += text
+        st.sidebar.success("Wertesystem aktiv!")
+    except Exception as e:
+        st.sidebar.error(f"PDF-Fehler: {e}")
+
+if st.sidebar.button("Neuen Dialog starten"):
+    st.session_state.messages = []
+    st.rerun()
+
+# 3. API-Konfiguration
 if "GOOGLE_API_KEY" in st.secrets:
-    api_key = st.secrets["GOOGLE_API_KEY"].strip().strip('"').strip("'").strip("[").strip("]")
-    genai.configure(api_key=api_key)
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"].strip())
 else:
     st.error("API-Key fehlt in den Secrets!")
     st.stop()
 
-# 2. Die Coaching-Instruktion (System-Kontext)
-SYSTEM_PROMPT = """
-Du bist der Sprungbrett-Coach für das Führungslabor. 
-DEIN ZIEL: Hilf der Führungskraft, einen Energiefresser anzugehen.
+# 4. System-Instruktion mit Aufgaben-Skalierung
+SYSTEM_INSTRUCTION = f"""
+Du bist der Sprungbrett-Coach für das Führungslabor 2026. 
+BASIS: Nutze dieses Wertesystem als Wegweiser:
+---
+{values_context if values_context else "Allgemeine FM-Coaching Standards."}
+---
 
-ABLAUF (strikt einhalten):
-1. Wenn der User 'Hallo' schreibt: Begrüsse ihn und frage: 'Welcher Energiefresser beschäftigt dich heute?'
-2. Wenn der User den Energiefresser nennt: Frage nach der Sprungbretthöhe: 'Möchtest du vom 1m, 3m oder 5m Brett springen? (1m = kleiner Schritt, 5m = mutiger Sprung)'
-3. Wenn die Höhe gewählt wurde: Gib eine konkrete AKTION und eine REFLEXIONSFRAGE aus.
+DEINE AUFGABE:
+1. Start: Wenn der User 'Hallo' sagt, frage nach dem Energiefresser.
+2. Klärung: Sobald der Energiefresser steht, frage nach der Höhe (1m, 3m, 5m).
+3. Aktion: Gib eine AKTION und eine REFLEXIONSFRAGE aus, die exakt zur Höhe passen:
+   - 1m: Sofort umsetzbar (<15 Min), minimales Risiko, z.B. eine kurze Nachricht, eine Termineinladung.
+   - 3m: Erfordert Interaktion oder Verhaltensänderung, z.B. ein Feedback-Gespräch, eine neue Regel.
+   - 5m: Verlassen der Komfortzone, radikale Entscheidung, z.B. Projektabbruch, Klärung eines Alt-Konflikts.
 
-TONFALL: Professionell, ermutigend, prägnant.
+TONFALL: Ermutigend, präzise, professionell.
 """
 
-# 3. Chat-Gedächtnis initialisieren
+# 5. Chat-Logik
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Bisherigen Chat anzeigen
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 4. Nutzer-Eingabe verarbeiten
-if prompt := st.chat_input("Schreibe 'Hallo' um zu starten..."):
-    # Nutzer-Nachricht speichern und anzeigen
+if prompt := st.chat_input("Schreibe 'Hallo' um den Dialog zu beginnen..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     try:
-        # Wir nutzen das Modell, das wir vorhin erfolgreich getestet haben
         model = genai.GenerativeModel("gemini-2.5-flash")
+        # Kontext-Zusammenbau
+        history = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
+        full_prompt = f"{SYSTEM_INSTRUCTION}\n\nHistorie:\n{history}\n\nKI:"
         
-        # Wir bauen den gesamten Kontext zusammen
-        full_context = f"{SYSTEM_PROMPT}\n\nBisheriger Chatverlauf: {st.session_state.messages}\n\nAktuelle Eingabe: {prompt}"
-        
-        with st.spinner('Sprungbrett wird vorbereitet...'):
-            response = model.generate_content(full_context)
+        with st.spinner('Berechne Absprungwinkel...'):
+            response = model.generate_content(full_prompt)
             
-        # Antwort der KI anzeigen und speichern
         if response.text:
             with st.chat_message("assistant"):
                 st.markdown(response.text)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
-
     except Exception as e:
-        st.error(f"Ein technischer Energiefresser: {e}")
-
-# Option zum Zurücksetzen
-if st.sidebar.button("Neuen Dialog starten"):
-    st.session_state.messages = []
-    st.rerun()
+        st.error(f"Technischer Stolperstein: {e}")
