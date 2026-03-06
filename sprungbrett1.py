@@ -2,7 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 from PyPDF2 import PdfReader
 
-# 1. Seite & Onboarding
+# 1. Seite & Onboarding (Jetzt ohne den Expander am Anfang)
 st.set_page_config(page_title="FM Sprungbrett Pro", page_icon="🚀", layout="centered")
 
 st.title("🚀 Dein FM-Sprungbrett")
@@ -13,15 +13,6 @@ Das **Sprungbrett** ist dein Werkzeug, um vom Nachdenken ins Tun zu kommen.
 
 Gemeinsam identifizieren wir heute einen **Energiefresser** und wählen dann die passende Sprungbretthöhe für deine Lösung. 
 Je höher das Brett, desto mehr Mut ist gefragt – aber desto grösser ist auch die Befreiung.
-""")
-
-with st.expander("🔍 Was bedeuten die Sprungbretter? (Mut-Level)"):
-    st.markdown("""
-| Höhe | Mut-Level | Beschreibung | Ziel |
-| :--- | :--- | :--- | :--- |
-| **1 Meter** | **Leicht** | Ein kleiner „Quick-Win“. Wenig Risiko, sofort umsetzbar (<15 Min). | Den Stein ins Rollen bringen. |
-| **3 Meter** | **Respektabel** | Eine bewusste Verhaltensänderung oder ein klares Gespräch. | Spürbare Entlastung schaffen. |
-| **5 Meter** | **Mutig** | Ein radikaler Stopp oder ein schwieriger Konflikt. | Echte Transformation & Klärung. |
 """)
 
 # 2. Seitenleiste: Wissensbasis & Reset
@@ -50,7 +41,7 @@ else:
     st.error("API-Key fehlt in den Secrets!")
     st.stop()
 
-# 4. System-Instruktion mit Aufgaben-Skalierung
+# 4. System-Instruktion
 SYSTEM_INSTRUCTION = f"""
 Du bist der Sprungbrett-Coach für das Führungslabor 2026. 
 BASIS: Nutze dieses Wertesystem als Wegweiser:
@@ -60,16 +51,11 @@ BASIS: Nutze dieses Wertesystem als Wegweiser:
 
 DEINE AUFGABE:
 1. Start: Wenn der User 'Hallo' sagt, frage nach dem Energiefresser.
-2. Klärung: Sobald der Energiefresser steht, frage nach der Höhe (1m, 3m, 5m).
-3. Aktion: Gib eine AKTION und eine REFLEXIONSFRAGE aus, die exakt zur Höhe passen:
-   - 1m: Sofort umsetzbar (<15 Min), minimales Risiko, z.B. eine kurze Nachricht, eine Termineinladung.
-   - 3m: Erfordert Interaktion oder Verhaltensänderung, z.B. ein Feedback-Gespräch, eine neue Regel.
-   - 5m: Verlassen der Komfortzone, radikale Entscheidung, z.B. Projektabbruch, Klärung eines Alt-Konflikts.
-
-TONFALL: Ermutigend, präzise, professionell.
+2. Klärung: Sobald der Energiefresser steht, frage explizit nach der Höhe (1m, 3m, 5m).
+3. Aktion: Gib eine AKTION und eine REFLEXIONSFRAGE aus, die exakt zur Höhe passen.
 """
 
-# 5. Chat-Logik
+# 5. Chat-Historie anzeigen
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -77,14 +63,33 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
+# --- NEU: DYNAMISCHER EXPANDER (Nur wenn die Wahl ansteht) ---
+show_mut_level = False
+if st.session_state.messages:
+    # Wir prüfen, ob die KI im letzten Schritt nach der Höhe gefragt hat
+    last_ai_msg = next((m["content"] for m in reversed(st.session_state.messages) if m["role"] == "assistant"), "")
+    if any(keyword in last_ai_msg.lower() for keyword in ["1m", "3m", "5m", "höhe", "meter"]):
+        show_mut_level = True
+
+if show_mut_level:
+    with st.expander("🔍 Entscheidungshilfe: Was bedeuten die Sprungbretter?", expanded=True):
+        st.markdown("""
+| Höhe | Mut-Level | Beschreibung | Ziel |
+| :--- | :--- | :--- | :--- |
+| **1 Meter** | **Leicht** | Ein kleiner „Quick-Win“. Wenig Risiko, sofort umsetzbar (<15 Min). | Den Stein ins Rollen bringen. |
+| **3 Meter** | **Respektabel** | Eine bewusste Verhaltensänderung oder ein klares Gespräch. | Spürbare Entlastung schaffen. |
+| **5 Meter** | **Mutig** | Ein radikaler Stopp oder ein schwieriger Konflikt. | Echte Transformation & Klärung. |
+""")
+
+# 6. Chat-Logik
 if prompt := st.chat_input("Schreibe 'Hallo' um den Dialog zu beginnen..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     try:
+        # Wir bleiben beim erfolgreichen Modell gemini-2.5-flash
         model = genai.GenerativeModel("gemini-2.5-flash")
-        # Kontext-Zusammenbau
         history = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
         full_prompt = f"{SYSTEM_INSTRUCTION}\n\nHistorie:\n{history}\n\nKI:"
         
@@ -95,5 +100,7 @@ if prompt := st.chat_input("Schreibe 'Hallo' um den Dialog zu beginnen..."):
             with st.chat_message("assistant"):
                 st.markdown(response.text)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
+            # St.rerun() sorgt dafür, dass der Expander sofort erscheint, wenn die Bedingung erfüllt ist
+            st.rerun() 
     except Exception as e:
         st.error(f"Technischer Stolperstein: {e}")
