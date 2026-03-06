@@ -1,9 +1,16 @@
 import streamlit as st
 import google.generativeai as genai
-from PyPDF2 import PdfReader
 
-# 1. Seite & Onboarding (Jetzt ohne den Expander am Anfang)
+# 1. Seite & Onboarding
 st.set_page_config(page_title="FM Sprungbrett Pro", page_icon="🚀", layout="centered")
+
+# --- HIER DEN TEXT DEINES WERTESYSTEMS EINTRAGEN ---
+# Kopiere den Text deines PDFs einfach zwischen die Anführungszeichen.
+WERTESYSTEM_TEXT = """
+Hier den Text des betrieblichen Wertesystems einfügen...
+Dieser Text dient der KI als dauerhafter Wegweiser.
+"""
+# --------------------------------------------------
 
 st.title("🚀 Dein FM-Sprungbrett")
 st.markdown("""
@@ -15,21 +22,8 @@ Gemeinsam identifizieren wir heute einen **Energiefresser** und wählen dann die
 Je höher das Brett, desto mehr Mut ist gefragt – aber desto grösser ist auch die Befreiung.
 """)
 
-# 2. Seitenleiste: Wissensbasis & Reset
-st.sidebar.header("📁 Wissensbasis")
-uploaded_file = st.sidebar.file_uploader("Wertesystem (PDF) hochladen", type="pdf")
-
-values_context = ""
-if uploaded_file:
-    try:
-        pdf_reader = PdfReader(uploaded_file)
-        for page in pdf_reader.pages:
-            text = page.extract_text()
-            if text: values_context += text
-        st.sidebar.success("Wertesystem aktiv!")
-    except Exception as e:
-        st.sidebar.error(f"PDF-Fehler: {e}")
-
+# 2. Seitenleiste: Nur Reset-Funktion
+st.sidebar.header("📁 Optionen")
 if st.sidebar.button("Neuen Dialog starten"):
     st.session_state.messages = []
     st.rerun()
@@ -41,12 +35,12 @@ else:
     st.error("API-Key fehlt in den Secrets!")
     st.stop()
 
-# 4. System-Instruktion
+# 4. System-Instruktion (Nutzt jetzt den festen Text oben)
 SYSTEM_INSTRUCTION = f"""
 Du bist der Sprungbrett-Coach für das Führungslabor 2026. 
 BASIS: Nutze dieses Wertesystem als Wegweiser:
 ---
-{values_context if values_context else "Allgemeine FM-Coaching Standards."}
+{WERTESYSTEM_TEXT}
 ---
 
 DEINE AUFGABE:
@@ -63,12 +57,11 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# --- NEU: DYNAMISCHER EXPANDER (Nur wenn die Wahl ansteht) ---
+# --- DYNAMISCHER EXPANDER (Erscheint nur bei der Wahl) ---
 show_mut_level = False
 if st.session_state.messages:
-    # Wir prüfen, ob die KI im letzten Schritt nach der Höhe gefragt hat
     last_ai_msg = next((m["content"] for m in reversed(st.session_state.messages) if m["role"] == "assistant"), "")
-    if any(keyword in last_ai_msg.lower() for keyword in ["1m", "3m", "5m", "höhe", "meter"]):
+    if any(keyword in last_ai_msg.lower() for keyword in ["1m", "3m", "5m", "höhe", "meter", "brett"]):
         show_mut_level = True
 
 if show_mut_level:
@@ -88,7 +81,6 @@ if prompt := st.chat_input("Schreibe 'Hallo' um den Dialog zu beginnen..."):
         st.markdown(prompt)
 
     try:
-        # Wir bleiben beim erfolgreichen Modell gemini-2.5-flash
         model = genai.GenerativeModel("gemini-2.5-flash")
         history = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
         full_prompt = f"{SYSTEM_INSTRUCTION}\n\nHistorie:\n{history}\n\nKI:"
@@ -100,7 +92,6 @@ if prompt := st.chat_input("Schreibe 'Hallo' um den Dialog zu beginnen..."):
             with st.chat_message("assistant"):
                 st.markdown(response.text)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
-            # St.rerun() sorgt dafür, dass der Expander sofort erscheint, wenn die Bedingung erfüllt ist
             st.rerun() 
     except Exception as e:
         st.error(f"Technischer Stolperstein: {e}")
